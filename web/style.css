@@ -324,3 +324,5 @@ input:disabled { cursor: not-allowed; opacity: .6; }
 }
 .ref-main { flex: 3 1 480px; }
 .ref-side { flex: 2 1 300px; }
+.foot-link { color: var(--muted); text-decoration: none; }
+.foot-link:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
