@@ -15,6 +15,7 @@ A small, self-hosted file sharing service written in Rust — a simpler take on
 curl -fsSLO https://raw.githubusercontent.com/fsend-me/fsend/main/docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/fsend-me/fsend/main/.env.example -o .env
 # optional: set FSEND_TOKEN in .env (e.g. `openssl rand -hex 24`)
+mkdir -p data          # create it yourself, before the first start
 docker compose up -d
 open http://localhost:8080
 ```
@@ -29,20 +30,27 @@ The container runs as non-root with a read-only filesystem.
 ### Data folder permissions
 
 fsend runs as your host user (`FSEND_UID` / `FSEND_GID`, default `1000:1000`) so files in `./data`
-stay owned by you. Docker creates a missing `./data` owned by root, so the compose file starts a
-tiny one-shot `fsend-init` container first that `chown`s `./data` to that user and exits; fsend
-starts only after it succeeds. Nothing to do by hand, unless your IDs are not 1000:
+stay owned by you. **Create `./data` yourself before the first start**: if it is missing, Docker
+creates it owned by root and fsend cannot write to it.
 
 ```bash
-echo "FSEND_UID=$(id -u)" >> .env
+mkdir -p data
+echo "FSEND_UID=$(id -u)" >> .env     # only if your IDs are not 1000
 echo "FSEND_GID=$(id -g)" >> .env
+docker compose up -d
+```
+
+Already started and `./data` ended up owned by root? Hand it back to your user:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" data
 docker compose up -d
 ```
 
 Running the image without compose and without `--user`, it runs as UID:GID `65532:65532`; give a
 bind-mounted folder to it with `sudo chown -R 65532:65532 ./data`. Named volumes
 (`-v fsend-data:/data`) need nothing: Docker copies the image's ownership into a new volume.
-On SELinux hosts (Fedora/RHEL) add `:Z` to both bind mounts (`./data:/data:Z`).
+On SELinux hosts (Fedora/RHEL) add `:Z` to the bind mount (`./data:/data:Z`).
 
 If the permissions are wrong, fsend exits at startup with a message like:
 
