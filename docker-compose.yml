@@ -1,14 +1,13 @@
 services:
   fsend:
-    build: .
-    image: fsend:latest
-    # Or skip the build and use the prebuilt multi-arch image:
-    # image: ghcr.io/fsend-me/fsend:latest
+    image: ghcr.io/fsend-me/fsend:latest
     container_name: fsend
     restart: unless-stopped
     ports:
       - "${FSEND_PORT:-8080}:8080"
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - fsend-data:/data
     read_only: true

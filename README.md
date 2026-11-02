@@ -12,11 +12,16 @@ A small, self-hosted file sharing service written in Rust — a simpler take on
 ## Run with Docker Compose
 
 ```bash
-cp .env.example .env
-# set FSEND_TOKEN (e.g. `openssl rand -hex 24`)
-docker compose up -d --build
+curl -fsSLO https://raw.githubusercontent.com/fsend-me/fsend/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/fsend-me/fsend/main/.env.example -o .env
+# optional: set FSEND_TOKEN in .env (e.g. `openssl rand -hex 24`)
+docker compose up -d
 open http://localhost:8080
 ```
+
+This pulls the prebuilt image `ghcr.io/fsend-me/fsend:latest`. The `.env` file is optional;
+without it the defaults apply (no token, 3-day expiry, 10 GB limit). Update with
+`docker compose pull && docker compose up -d`.
 
 Data lives in the `fsend-data` volume (`/data` in the container).
 The container runs as non-root with a read-only filesystem.
@@ -36,7 +41,7 @@ docker run -d --name fsend -p 8080:8080 \
 ```
 
 Tags: `latest` (main), `main`, `sha-<short>`, and `X.Y.Z` / `X.Y` for releases.
-To use it with Compose, replace `build: .` with `image: ghcr.io/fsend-me/fsend:latest`.
+Pin a release instead of `latest` by changing `image:` in `docker-compose.yml` (e.g. `ghcr.io/fsend-me/fsend:0.1`).
 
 ## Configuration
 
@@ -121,7 +126,7 @@ Send `Accept: application/json` to get a JSON body instead.
 ## Development
 
 ```bash
-docker compose up --build        # run
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build   # build from source
 docker run --rm -v "$PWD":/src -w /src rust:1-alpine sh -c 'apk add musl-dev && cargo test'
 ```
 
