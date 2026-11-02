@@ -53,6 +53,43 @@ pub fn router(st: AppState) -> Router {
         .with_state(st)
 }
 
+/// Creates the data folders and proves we can write there, with an actionable error if not.
+fn check_data_dir(dir: &std::path::Path) -> Result<(), String> {
+    let probe = dir.join("tmp").join(".write-test");
+    let result = ["files", "tmp"]
+        .iter()
+        .try_for_each(|d| std::fs::create_dir_all(dir.join(d)))
+        .and_then(|_| std::fs::write(&probe, b"ok"))
+        .and_then(|_| std::fs::remove_file(&probe));
+    let Err(e) = result else { return Ok(()) };
+    let mut msg = format!("error: cannot write to data directory {}: {e}", dir.display());
+    if e.kind() == std::io::ErrorKind::PermissionDenied {
+        let (uid, gid) = current_ids();
+        msg.push_str(&format!(
+            "\n\nfsend runs as UID:GID {uid}:{gid}, which cannot write to this folder.\n\
+             If it is a bind mount (e.g. ./data:/data), fix it on the host with either:\n\
+             \n  sudo chown -R {uid}:{gid} ./data\n\
+             \nor run the container as the folder's owner, e.g. in docker-compose.yml:\n\
+             \n  user: \"1000:1000\"   # values from `id -u` and `id -g` on the host\n"
+        ));
+    }
+    Err(msg)
+}
+
+/// Effective UID/GID from /proc (Linux); "?" elsewhere.
+fn current_ids() -> (String, String) {
+    let status = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+    let field = |name: &str| {
+        status
+            .lines()
+            .find_map(|l| l.strip_prefix(name))
+            .and_then(|v| v.split_whitespace().nth(1))
+            .unwrap_or("?")
+            .to_string()
+    };
+    (field("Uid:"), field("Gid:"))
+}
+
 /// `fsend --healthcheck`: lets the distroless container check itself without curl.
 fn healthcheck(listen: &str) -> std::process::ExitCode {
     use std::io::{Read, Write};
@@ -89,10 +126,17 @@ async fn main() -> std::process::ExitCode {
         return healthcheck(&cfg.listen);
     }
 
-    for d in ["files", "tmp"] {
-        std::fs::create_dir_all(cfg.data_dir.join(d)).expect("cannot create data dir");
+    if let Err(msg) = check_data_dir(&cfg.data_dir) {
+        eprintln!("{msg}");
+        return std::process::ExitCode::FAILURE;
     }
-    let db = db::Db::open(&cfg.data_dir.join("fsend.db")).expect("cannot open database");
+    let db = match db::Db::open(&cfg.data_dir.join("fsend.db")) {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("error: cannot open database {}: {e}", cfg.data_dir.join("fsend.db").display());
+            return std::process::ExitCode::FAILURE;
+        }
+    };
     if cfg.auth_token.is_none() {
         tracing::warn!("FSEND_TOKEN is not set: anyone can upload!");
     }

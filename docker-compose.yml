@@ -3,17 +3,17 @@ services:
     image: ghcr.io/fsend-me/fsend:latest
     container_name: fsend
     restart: unless-stopped
+    # Run as your host user so ./data stays owned by you (see `id -u` / `id -g`).
+    user: "${FSEND_UID:-1000}:${FSEND_GID:-1000}"
     ports:
       - "${FSEND_PORT:-8080}:8080"
     env_file:
       - path: .env
         required: false
     volumes:
-      - fsend-data:/data
+      # Create it first (`mkdir -p data`), otherwise Docker creates it owned by root.
+      - ./data:/data
     read_only: true
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-
-volumes:
-  fsend-data:

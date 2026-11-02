@@ -15,6 +15,7 @@ A small, self-hosted file sharing service written in Rust — a simpler take on
 curl -fsSLO https://raw.githubusercontent.com/fsend-me/fsend/main/docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/fsend-me/fsend/main/.env.example -o .env
 # optional: set FSEND_TOKEN in .env (e.g. `openssl rand -hex 24`)
+mkdir -p data
 docker compose up -d
 open http://localhost:8080
 ```
@@ -23,8 +24,39 @@ This pulls the prebuilt image `ghcr.io/fsend-me/fsend:latest`. The `.env` file i
 without it the defaults apply (no token, 3-day expiry, 10 GB limit). Update with
 `docker compose pull && docker compose up -d`.
 
-Data lives in the `fsend-data` volume (`/data` in the container).
+Data lives in `./data` next to the compose file (`/data` in the container).
 The container runs as non-root with a read-only filesystem.
+
+### Data folder permissions
+
+The container must be able to write to `./data`. The compose file runs it as your host user
+(`FSEND_UID` / `FSEND_GID`, default `1000:1000`), so the folder stays owned by you:
+
+```bash
+mkdir -p data                         # create it yourself; Docker would create it owned by root
+echo "FSEND_UID=$(id -u)" >> .env     # only if your IDs are not 1000
+echo "FSEND_GID=$(id -g)" >> .env
+```
+
+Without a `user:` override the image runs as UID:GID `65532:65532`. In that case give the folder to it:
+
+```bash
+sudo chown -R 65532:65532 ./data
+```
+
+With a named volume instead of a folder (`fsend-data:/data`) nothing is needed: Docker copies the
+image's ownership into a new volume. On SELinux hosts (Fedora/RHEL) add `:Z` to the bind mount
+(`./data:/data:Z`). Docker Desktop on macOS/Windows usually hides permission problems, so test on Linux.
+
+If the permissions are wrong, fsend exits at startup with a message like:
+
+```
+error: cannot write to data directory /data: Permission denied (os error 13)
+
+fsend runs as UID:GID 1000:1000, which cannot write to this folder.
+...
+  sudo chown -R 1000:1000 ./data
+```
 
 For HTTPS, put any reverse proxy in front and forward `Host` and `X-Forwarded-Proto`.
 
@@ -59,6 +91,7 @@ Pin a release instead of `latest` by changing `image:` in `docker-compose.yml` (
 | `FSEND_LISTEN` | `0.0.0.0:8080` | Listen address. |
 | `FSEND_DATA_DIR` | `./data` (`/data` in Docker) | Storage directory. |
 | `FSEND_PORT` | `8080` | Host port (compose only). |
+| `FSEND_UID` / `FSEND_GID` | `1000` | Host user the container runs as (compose only). |
 
 ## CLI
 
