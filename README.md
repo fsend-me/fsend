@@ -23,6 +23,21 @@ The container runs as non-root with a read-only filesystem.
 
 For HTTPS, put any reverse proxy in front and forward `Host` and `X-Forwarded-Proto`.
 
+### Prebuilt image
+
+Multi-arch images (`linux/amd64`, `linux/arm64`) are published to GHCR on every push to `main`
+and for every `v*` tag:
+
+```bash
+docker run -d --name fsend -p 8080:8080 \
+  -e FSEND_TOKEN=change-me \
+  -v fsend-data:/data \
+  ghcr.io/fsend-me/fsend:latest
+```
+
+Tags: `latest` (main), `main`, `sha-<short>`, and `X.Y.Z` / `X.Y` for releases.
+To use it with Compose, replace `build: .` with `image: ghcr.io/fsend-me/fsend:latest`.
+
 ## Configuration
 
 | Variable | Default | Description |

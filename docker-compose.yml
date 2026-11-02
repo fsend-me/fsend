@@ -2,6 +2,8 @@ services:
   fsend:
     build: .
     image: fsend:latest
+    # Or skip the build and use the prebuilt multi-arch image:
+    # image: ghcr.io/fsend-me/fsend:latest
     container_name: fsend
     restart: unless-stopped
     ports:
