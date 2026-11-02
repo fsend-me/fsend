@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fsend — send a file, get a link</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand">
+      <a href="/" class="logo">
+        <span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+        <span class="logo-text">fsend</span>
+      </a>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="web" role="tab" type="button">Upload</button>
+        <button class="tab" data-tab="cli" role="tab" type="button">Command line</button>
+      </nav>
+      <div class="theme-switch" data-theme-switch></div>
+    </header>
+
+    <!-- ===================== Upload ===================== -->
+    <section id="tab-web">
+      <div class="hero">
+        <h1>Send a file.<br>Get a link.</h1>
+        <div class="hero-meta">
+          <span>Up to <span id="max-size">10 GB</span> per file</span>
+          <span>Self-destructs after <span class="js-default-days-text">3 days</span></span>
+        </div>
+      </div>
+
+      <div class="parcel">
+        <label id="drop" class="drop" tabindex="0">
+          <input id="file" type="file" multiple hidden>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <span class="drop-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></span>
+          <span class="drop-title wide-only">Drop files anywhere on this page</span>
+          <span class="drop-sub wide-only">or <u>browse your computer</u> · paste from the clipboard</span>
+          <span class="drop-title narrow-only">Tap to choose files</span>
+          <span class="drop-sub narrow-only">Photos, videos, documents</span>
+        </label>
+
+        <div class="perforation" aria-hidden="true"></div>
+
+        <div class="options">
+          <label class="field">
+            <span class="eyebrow">Expires after</span>
+            <select id="days" class="control"></select>
+          </label>
+          <label class="field">
+            <span class="eyebrow">Max downloads</span>
+            <select id="max-downloads" class="control">
+              <option value="">Unlimited</option>
+              <option value="1">1 — burn after reading</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <label class="field" id="token-field" hidden>
+            <span class="eyebrow">Upload token</span>
+            <span class="control with-icon">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+              <input id="token" type="password" autocomplete="current-password" placeholder="Required to upload">
+            </span>
+            <small id="token-hint" class="field-hint" hidden></small>
+          </label>
+        </div>
+      </div>
+
+      <div id="lock-banner" class="notice" role="alert" hidden>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+        <div class="notice-text">
+          <strong>Uploads paused</strong>
+          <span>Too many wrong tokens from your network. Try again when the timer runs out.</span>
+        </div>
+        <span id="lock-left" class="notice-time">15:00</span>
+      </div>
+
+      <section id="sent" class="sent" hidden>
+        <div class="sent-head">
+          <h2>Sent from this browser</h2>
+          <span id="sent-count" class="count">0</span>
+          <button id="clear-history" class="link-btn" type="button">Clear list</button>
+        </div>
+        <ul id="uploads" class="tickets"></ul>
+      </section>
+    </section>
+
+    <!-- ===================== Command line ===================== -->
+    <section id="tab-cli" hidden>
+      <h1 class="page-title">Upload from<br>your terminal.</h1>
+      <p class="lead">Plain <code>curl</code>, nothing to install.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-head"><span class="step-n">1</span>Send a file</div>
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>curl{{curl_token}} --upload-file ./photo.jpg {{origin}}/photo.jpg</code></pre>
+          <span class="step-note">Prints the link. That's it.</span>
+        </div>
+        <div class="step">
+          <div class="step-head"><span class="step-n">2</span>Add limits</div>
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>curl{{curl_token}} -H "Max-Days: 1" -H "Max-Downloads: 1" --upload-file ./secret.zip {{origin}}/secret.zip</code></pre>
+          <span class="step-note">Expires after 1 day and burns after the first download.</span>
+        </div>
+        <div class="step" data-auth>
+          <div class="step-head"><span class="step-n">3</span>Forgot the token?</div>
+          <pre class="term" data-nocopy><span class="prompt">$ </span><code data-tpl>curl --upload-file ./photo.jpg {{origin}}/photo.jpg</code>
+<span class="out">Error: this server requires an upload token.</span></pre>
+          <span class="step-note">The server answers 401 and shows the right command. 5 wrong tokens lock your IP for a while.</span>
+        </div>
+      </div>
+
+      <h2 class="section-title">More examples</h2>
+      <div class="examples">
+        <div class="example">
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>tar czf - ./project | curl{{curl_token}} --upload-file - {{origin}}/project.tar.gz</code></pre>
+          <span class="example-label">Pipe from stdin</span>
+        </div>
+        <div class="example" data-auth>
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>curl -u :YOUR_TOKEN --upload-file ./photo.jpg {{origin}}/photo.jpg</code></pre>
+          <span class="example-label">Shorter token form</span>
+        </div>
+        <div class="example">
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>curl -X DELETE {{origin}}/abc/photo.jpg/&lt;delete-token&gt;</code></pre>
+          <span class="example-label">Delete early</span>
+        </div>
+        <div class="example">
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>eval "$(curl -fsSL {{origin}}/install.sh)" &amp;&amp; fsend{{token}} ./photo.jpg</code></pre>
+          <span class="example-label">Optional shell helper</span>
+        </div>
+      </div>
+
+      <div class="ref">
+        <div class="ref-main">
+          <h2>Options</h2>
+          <div class="opts">
+            <div class="opt" data-auth><code>--oauth2-bearer &lt;token&gt;</code><span>Your upload token. curl has no <code>--token</code> flag; this is its built-in equivalent.</span></div>
+            <div class="opt"><code>-H "Max-Days: N"</code><span>Expire after N days. Decimals allowed: <code>0.5</code> = 12 hours. Default <span class="js-default-days">3</span>, max <span class="js-max-days">30</span>.</span></div>
+            <div class="opt"><code>-H "Max-Downloads: N"</code><span>Delete after N downloads.</span></div>
+            <div class="opt" data-auth><code>-u :&lt;token&gt;</code><span>Same as <code>--oauth2-bearer</code>, shorter to type.</span></div>
+          </div>
+        </div>
+        <div class="ref-side">
+          <h2>What you get back</h2>
+          <div class="returns">
+            <div><div class="eyebrow">Body</div><code data-tpl>{{origin}}/abc/photo.jpg</code></div>
+            <div><div class="eyebrow">X-Url-Delete</div><code data-tpl>{{origin}}/abc/photo.jpg/&lt;token&gt;</code></div>
+            <div><div class="eyebrow">X-Expires-At</div><code>unix time, e.g. 1793861549</code></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>Files expire after <span class="js-default-days-text">3 days</span> by default · max <span id="max-days">30 days</span></span>
+      <span>fsend · self-hosted</span>
+    </footer>
+  </main>
+
+  <template id="item-tpl">
+    <li class="ticket">
+      <div class="ticket-main">
+        <div class="thumb"></div>
+        <div class="ticket-body">
+          <div class="ticket-top">
+            <span class="ticket-name"></span>
+            <span class="ticket-meta"></span>
+          </div>
+          <div class="progress"><div class="bar"></div></div>
+          <div class="result" hidden>
+            <input class="url" readonly aria-label="Share link">
+            <button class="btn btn-ink copy" type="button">Copy link</button>
+            <button class="btn btn-line btn-icon qr-btn" type="button" aria-label="Show QR code" title="QR code">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+            </button>
+            <button class="btn btn-line btn-icon danger del" type="button" aria-label="Delete now" title="Delete now">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </div>
+          <div class="qr" hidden></div>
+          <div class="error" hidden>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>
+            <span class="error-text"></span>
+          </div>
+        </div>
+      </div>
+      <div class="ticket-stub">
+        <span class="stub-label">Uploading</span>
+        <span class="stub-value">0%</span>
+      </div>
+    </li>
+  </template>
+</body>
+</html>

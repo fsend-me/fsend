@@ -1,0 +1,27 @@
+[package]
+name = "fsend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.9"
+futures-util = "0.3.34"
+hex = "0.4.3"
+infer = "0.22.0"
+percent-encoding = "2.3.2"
+qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+rand = "0.10.3"
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+tokio = { version = "1.54.1", features = ["full"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.7.1", features = ["trace", "set-header", "fs"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

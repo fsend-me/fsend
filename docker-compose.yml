@@ -1,0 +1,18 @@
+services:
+  fsend:
+    build: .
+    image: fsend:latest
+    container_name: fsend
+    restart: unless-stopped
+    ports:
+      - "${FSEND_PORT:-8080}:8080"
+    env_file: .env
+    volumes:
+      - fsend-data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  fsend-data:

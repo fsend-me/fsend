@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{filename}} · fsend</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script src="/static/file.js" defer></script>
+</head>
+<body>
+  <main class="wrap narrow">
+    <header class="brand">
+      <a href="/" class="logo">
+        <span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+        <span class="logo-text">fsend</span>
+      </a>
+      <div class="theme-switch" data-theme-switch></div>
+    </header>
+
+    <article class="file-ticket">
+      <div class="file-main">
+        {{preview}}
+        <div>
+          <h1 class="file-name">{{filename}}</h1>
+          <div class="chips">
+            <span class="chip">{{size}}</span>
+            <span class="chip">{{kind}}</span>
+            <span class="chip">{{downloads}}</span>
+          </div>
+        </div>
+        <a class="btn btn-accent btn-big" href="{{url}}?dl=1">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
+          Download
+        </a>
+        <div class="share">
+          <input class="url" id="url" value="{{url}}" readonly aria-label="Share link">
+          <button class="btn btn-line" id="copy" type="button">Copy link</button>
+        </div>
+      </div>
+
+      <aside class="file-stub">
+        <div class="stub-block">
+          <span class="stub-label">Self-destructs in</span>
+          <span class="stub-big" id="countdown" data-expires="{{expires_at}}">…</span>
+          <span class="stub-small" id="expires-on"></span>
+        </div>
+        <div class="qr">
+          <img src="{{url}}/qr.svg" alt="QR code for this link" width="148" height="148">
+          <span>Scan to open on your phone</span>
+        </div>
+        <div class="stub-block">
+          <span class="stub-label">File ID</span>
+          <span class="stub-id">{{id}}</span>
+        </div>
+      </aside>
+    </article>
+
+    <footer class="page-foot"><a href="/">Send your own files with fsend</a></footer>
+  </main>
+</body>
+</html>
