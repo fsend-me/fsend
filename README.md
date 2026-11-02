@@ -109,3 +109,8 @@ Send `Accept: application/json` to get a JSON body instead.
 docker compose up --build        # run
 docker run --rm -v "$PWD":/src -w /src rust:1-alpine sh -c 'apk add musl-dev && cargo test'
 ```
+
+## License
+
+[MIT](LICENSE). The bundled Geist and Geist Mono fonts (`web/fonts/`) are licensed under the
+[SIL Open Font License 1.1](web/fonts/OFL.txt).
