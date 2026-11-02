@@ -15,7 +15,6 @@ A small, self-hosted file sharing service written in Rust — a simpler take on
 curl -fsSLO https://raw.githubusercontent.com/fsend-me/fsend/main/docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/fsend-me/fsend/main/.env.example -o .env
 # optional: set FSEND_TOKEN in .env (e.g. `openssl rand -hex 24`)
-mkdir -p data
 docker compose up -d
 open http://localhost:8080
 ```
@@ -29,24 +28,21 @@ The container runs as non-root with a read-only filesystem.
 
 ### Data folder permissions
 
-The container must be able to write to `./data`. The compose file runs it as your host user
-(`FSEND_UID` / `FSEND_GID`, default `1000:1000`), so the folder stays owned by you:
+fsend runs as your host user (`FSEND_UID` / `FSEND_GID`, default `1000:1000`) so files in `./data`
+stay owned by you. Docker creates a missing `./data` owned by root, so the compose file starts a
+tiny one-shot `fsend-init` container first that `chown`s `./data` to that user and exits; fsend
+starts only after it succeeds. Nothing to do by hand, unless your IDs are not 1000:
 
 ```bash
-mkdir -p data                         # create it yourself; Docker would create it owned by root
-echo "FSEND_UID=$(id -u)" >> .env     # only if your IDs are not 1000
+echo "FSEND_UID=$(id -u)" >> .env
 echo "FSEND_GID=$(id -g)" >> .env
+docker compose up -d
 ```
 
-Without a `user:` override the image runs as UID:GID `65532:65532`. In that case give the folder to it:
-
-```bash
-sudo chown -R 65532:65532 ./data
-```
-
-With a named volume instead of a folder (`fsend-data:/data`) nothing is needed: Docker copies the
-image's ownership into a new volume. On SELinux hosts (Fedora/RHEL) add `:Z` to the bind mount
-(`./data:/data:Z`). Docker Desktop on macOS/Windows usually hides permission problems, so test on Linux.
+Running the image without compose and without `--user`, it runs as UID:GID `65532:65532`; give a
+bind-mounted folder to it with `sudo chown -R 65532:65532 ./data`. Named volumes
+(`-v fsend-data:/data`) need nothing: Docker copies the image's ownership into a new volume.
+On SELinux hosts (Fedora/RHEL) add `:Z` to both bind mounts (`./data:/data:Z`).
 
 If the permissions are wrong, fsend exits at startup with a message like:
 
