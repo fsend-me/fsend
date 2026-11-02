@@ -40,6 +40,8 @@ Set these in `.env` (or as environment variables).
 | `FSEND_CLEANUP_INTERVAL` | `600` | Seconds between sweeps that delete expired files from disk. |
 | `FSEND_AUTH_MAX_FAILS` | `5` | Wrong tokens allowed per IP before a lockout. |
 | `FSEND_AUTH_LOCKOUT_MINUTES` | `15` | Lockout length, also the window failures are counted in. |
+| `FSEND_AUTH_GLOBAL_MAX_FAILS` | `100` | Wrong tokens allowed server-wide per lockout window. When used up, uploads pause for clients that haven't uploaded successfully in the last 24 hours. `0` turns it off. |
+| `FSEND_NOT_FOUND_MAX` | `30` | Requests for missing links allowed per client in 10 minutes before a 10-minute block. Stops scanning for short ids. `0` turns it off. |
 | `FSEND_TRUST_PROXY` | `false` | Take the client IP from `X-Forwarded-For`. Enable only behind a reverse proxy. |
 | `FSEND_LISTEN` | `0.0.0.0:8080` | Listen address inside the container. |
 | `FSEND_DATA_DIR` | `/data` in Docker | Where files and the database are stored. |
@@ -100,7 +102,7 @@ Error: this server requires an upload token.
   curl --oauth2-bearer <token> --upload-file photo.jpg https://your.host/photo.jpg
 ```
 
-A wrong token reports how many tries are left. After 5 wrong tokens the IP gets `429` for 15 minutes.
+A wrong token reports how many tries are left. After 5 wrong tokens the client gets `429` for 15 minutes.
 
 **Optional shell helper:**
 
@@ -116,9 +118,10 @@ fsend --token <token> --days 1 --downloads 1 ./report.pdf
 - **By downloads.** With `Max-Downloads`, each download counts when it starts. The file is
   deleted as soon as the last allowed download begins; that download still finishes.
 - **What counts as a download.** Downloading the file does (the Download button, or `curl`/`wget`
-  on the link). Opening the link in a browser does not: browsers get an info page first. `HEAD`
-  requests and resumed downloads don't count either. Image previews are turned off for files with
-  a download limit, so the limit can't be bypassed.
+  on the link). Opening the link in a browser does not: browsers get an info page first, and `HEAD`
+  requests don't count. Files with a download limit are always sent whole and every download
+  counts (`Range` requests are ignored); image previews are off for them. Files without a limit
+  can be resumed.
 - **Deleted by the sender.** The delete link removes the file immediately.
 
 Caveat: some chat apps fetch links to build a preview. If their bot doesn't ask for HTML, that
@@ -222,12 +225,15 @@ UID:GID `65532:65532`, so a bind-mounted folder needs `sudo chown -R 65532:65532
 
 ## Security
 
-- Download links need both the id **and** the exact filename, so short ids can't be enumerated alone.
+- Download links need both the id **and** the exact filename, and clients that hit too many missing
+  links are blocked for a while, so short ids can't be scanned.
 - Uploads stream to disk, and the size limit is enforced while streaming.
-- Filenames are sanitized; files are stored on disk by id only.
+- Filenames are sanitized (path parts, control characters, and bidi/zero-width characters that could
+  disguise an extension are removed); files are stored on disk by id only.
 - Files are always served as `attachment` with `nosniff`. Only raster images (png, jpeg, gif, webp,
   avif, bmp; detected from the content, never SVG) are previewed inline.
-- Wrong upload tokens are rate limited per IP, so even short tokens resist guessing.
+- Wrong upload tokens are limited per client (IPv6 counted per /64) and server-wide, so even short
+  tokens resist guessing from many addresses. For a public server, prefer tokens of 8+ characters.
 - Delete tokens are stored hashed. Pages use a strict Content-Security-Policy and load nothing
   from third parties (fonts are self-hosted).
 - The container runs as non-root, with a read-only filesystem and no capabilities.

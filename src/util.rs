@@ -76,10 +76,16 @@ fn base64_decode(s: &str) -> Option<Vec<u8>> {
     Some(out)
 }
 
-/// Strips any path components and control characters from a filename.
+/// Bidi overrides/isolates and zero-width characters: they let a name like
+/// "invoice\u{202E}fdp.exe" display as "invoiceexe.pdf".
+fn is_invisible_format(c: char) -> bool {
+    matches!(c, '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}' | '\u{061C}')
+}
+
+/// Strips any path components, control and invisible formatting characters from a filename.
 pub fn sanitize_filename(name: &str) -> Option<String> {
     let base = name.rsplit(['/', '\\']).next().unwrap_or("");
-    let cleaned: String = base.chars().filter(|c| !c.is_control()).collect();
+    let cleaned: String = base.chars().filter(|c| !c.is_control() && !is_invisible_format(*c)).collect();
     let cleaned = cleaned.trim().trim_start_matches('.').trim();
     if cleaned.is_empty() {
         return None;
@@ -175,6 +181,8 @@ mod tests {
         assert_eq!(sanitize_filename(".hidden").as_deref(), Some("hidden"));
         assert_eq!(sanitize_filename("ảnh đẹp.png").as_deref(), Some("ảnh đẹp.png"));
         assert_eq!(sanitize_filename("a\nb").as_deref(), Some("ab"));
+        assert_eq!(sanitize_filename("invoice\u{202E}fdp.exe").as_deref(), Some("invoicefdp.exe"));
+        assert_eq!(sanitize_filename("a\u{200B}b\u{2066}c.txt").as_deref(), Some("abc.txt"));
     }
 
     #[test]

@@ -13,7 +13,8 @@ pub async fn run(st: AppState) {
 }
 
 pub async fn sweep(st: &AppState) -> Result<(), Box<dyn std::error::Error>> {
-    st.limiter.sweep();
+    st.auth.sweep();
+    st.probes.sweep();
     let dead = st.db.purge_dead()?;
     for id in &dead {
         let _ = tokio::fs::remove_file(st.file_path(id)).await;

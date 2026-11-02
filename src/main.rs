@@ -18,7 +18,8 @@ use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 pub struct AppState {
     pub cfg: Arc<config::Config>,
     pub db: Arc<db::Db>,
-    pub limiter: Arc<limiter::AuthLimiter>,
+    pub auth: Arc<limiter::AuthGuard>,
+    pub probes: Arc<limiter::Limiter>,
 }
 
 impl AppState {
@@ -150,8 +151,9 @@ async fn main() -> std::process::ExitCode {
         "starting fsend"
     );
 
-    let limiter = limiter::AuthLimiter::new(cfg.auth_max_fails, cfg.auth_lockout);
-    let st = AppState { cfg: Arc::new(cfg), db: Arc::new(db), limiter: Arc::new(limiter) };
+    let auth = limiter::AuthGuard::new(cfg.auth_max_fails, cfg.auth_global_max_fails, cfg.auth_lockout);
+    let probes = limiter::Limiter::new(cfg.not_found_max, handlers::PROBE_WINDOW);
+    let st = AppState { cfg: Arc::new(cfg), db: Arc::new(db), auth: Arc::new(auth), probes: Arc::new(probes) };
     tokio::spawn(cleanup::run(st.clone()));
 
     let listener = tokio::net::TcpListener::bind(&st.cfg.listen).await.expect("cannot bind");

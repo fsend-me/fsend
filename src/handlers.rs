@@ -110,10 +110,14 @@ pub async fn install_sh(headers: HeaderMap) -> Response {
 // ---------- upload ----------
 
 fn too_many_attempts(left: std::time::Duration) -> Response {
+    too_many(left, "Too many invalid tokens")
+}
+
+fn too_many(left: std::time::Duration, what: &str) -> Response {
     let minutes = left.as_secs().div_ceil(60).max(1);
     let mut r = err(
         StatusCode::TOO_MANY_REQUESTS,
-        &format!("Too many invalid tokens. Try again in {minutes} minute{}.", if minutes == 1 { "" } else { "s" }),
+        &format!("{what}. Try again in {minutes} minute{}.", if minutes == 1 { "" } else { "s" }),
     );
     if let Ok(v) = HeaderValue::from_str(&left.as_secs().max(1).to_string()) {
         r.headers_mut().insert(header::RETRY_AFTER, v);
@@ -130,7 +134,7 @@ pub async fn upload(
     let headers = req.headers().clone();
     let ip = client_ip(peer, &headers, st.cfg.trust_proxy);
     if st.cfg.auth_token.is_some() {
-        if let Some(left) = st.limiter.blocked(ip) {
+        if let Some(left) = st.auth.blocked(ip) {
             return Err(too_many_attempts(left));
         }
     }
@@ -138,16 +142,20 @@ pub async fn upload(
     let mut attempts_left = None;
     if auth == Auth::Invalid {
         tracing::warn!(%ip, "invalid upload token");
-        match st.limiter.fail(ip) {
+        match st.auth.fail(ip) {
             Ok(left) => attempts_left = Some(left),
             Err(lock) => {
-                tracing::warn!(%ip, minutes = lock.as_secs() / 60, "too many invalid tokens, IP locked");
+                if st.auth.globally_locked() {
+                    tracing::warn!(%ip, "server-wide wrong-token budget used up, uploads paused for new clients");
+                } else {
+                    tracing::warn!(%ip, minutes = lock.as_secs() / 60, "too many invalid tokens, client locked");
+                }
                 return Err(too_many_attempts(lock));
             }
         }
     }
     if auth == Auth::Ok && st.cfg.auth_token.is_some() {
-        st.limiter.success(ip);
+        st.auth.success(ip);
     }
     if auth != Auth::Ok {
         let from_web = headers
@@ -332,12 +340,35 @@ fn not_found(headers: &HeaderMap) -> Response {
     }
 }
 
+/// How long probing for missing links is counted, and blocked once over the limit.
+pub const PROBE_WINDOW: std::time::Duration = std::time::Duration::from_secs(600);
+
+/// Runs a lookup by link, counting "not found" answers per client so short ids
+/// can't be scanned: too many misses and the client gets 429 for a while.
+async fn probe_guarded(st: &AppState, ip: std::net::IpAddr, fut: impl std::future::Future<Output = Res>) -> Res {
+    if let Some(left) = st.probes.blocked(ip) {
+        return Err(too_many(left, "Too many requests for missing files"));
+    }
+    let res = fut.await;
+    if matches!(&res, Err(r) if r.status() == StatusCode::NOT_FOUND) && st.probes.fail(ip).is_err() {
+        tracing::warn!(%ip, "too many requests for missing files, client blocked");
+    }
+    res
+}
+
 pub async fn get_file(
     State(st): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<std::net::SocketAddr>,
     Path((id, filename)): Path<(String, String)>,
     Query(q): Query<GetQuery>,
     req: Request,
 ) -> Res {
+    let ip = client_ip(peer, req.headers(), st.cfg.trust_proxy);
+    probe_guarded(&st, ip, get_file_inner(&st, id, filename, q, req)).await
+}
+
+async fn get_file_inner(st: &AppState, id: String, filename: String, q: GetQuery, mut req: Request) -> Res {
+    let st = st.clone();
     let headers = req.headers().clone();
     let method = req.method().clone();
 
@@ -357,19 +388,25 @@ pub async fn get_file(
         return Ok(info_page(&origin(&headers), &f));
     }
 
-    // HEAD and resumed (Range) requests don't count as a new download.
-    let is_continuation = method == Method::HEAD
-        || headers
-            .get(header::RANGE)
-            .and_then(|v| v.to_str().ok())
-            .is_some_and(|r| !r.trim().starts_with("bytes=0-"));
-    let f = if is_continuation {
-        st.db.get_active(&id, &filename)
+    // HEAD never counts. Resumed downloads (a Range not starting at byte 0) don't
+    // count either, except for files with a download limit: those are always
+    // served whole and every GET counts, or ranges could read them for free.
+    let resuming = headers
+        .get(header::RANGE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|r| !r.trim().starts_with("bytes=0-"));
+    let current = st.db.get_active(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(&headers))?;
+    let f = if method == Method::HEAD {
+        current
+    } else if current.max_downloads.is_some() {
+        req.headers_mut().remove(header::RANGE);
+        req.headers_mut().remove(header::IF_RANGE);
+        st.db.take_download(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(&headers))?
+    } else if resuming {
+        current
     } else {
-        st.db.take_download(&id, &filename)
-    }
-    .map_err(internal)?
-    .ok_or_else(|| not_found(&headers))?;
+        st.db.take_download(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(&headers))?
+    };
 
     let resp = serve(&st, &f, "attachment", req).await?;
     if f.max_downloads.is_some_and(|m| f.downloads >= m) {
@@ -461,14 +498,20 @@ fn render(tpl: &str, value: impl Fn(&str) -> String) -> String {
 
 pub async fn qr(
     State(st): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<std::net::SocketAddr>,
     Path((id, filename, action)): Path<(String, String, String)>,
     headers: HeaderMap,
 ) -> Res {
+    let ip = client_ip(peer, &headers, st.cfg.trust_proxy);
+    probe_guarded(&st, ip, qr_inner(&st, id, filename, action, &headers)).await
+}
+
+async fn qr_inner(st: &AppState, id: String, filename: String, action: String, headers: &HeaderMap) -> Res {
     if action != "qr.svg" {
         return Err(err(StatusCode::NOT_FOUND, "Not found"));
     }
-    let f = st.db.get_active(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(&headers))?;
-    let code = qrcode::QrCode::new(file_url(&origin(&headers), &f).as_bytes()).map_err(internal)?;
+    let f = st.db.get_active(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(headers))?;
+    let code = qrcode::QrCode::new(file_url(&origin(headers), &f).as_bytes()).map_err(internal)?;
     let svg = code
         .render::<qrcode::render::svg::Color>()
         .min_dimensions(200, 200)
@@ -479,13 +522,19 @@ pub async fn qr(
 
 pub async fn delete(
     State(st): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<std::net::SocketAddr>,
     Path((id, filename, token)): Path<(String, String, String)>,
+    headers: HeaderMap,
 ) -> Res {
-    if st.db.delete_with_hash(&id, &filename, &sha256_hex(&token)).map_err(internal)? {
-        let _ = tokio::fs::remove_file(st.file_path(&id)).await;
-        tracing::info!(%id, "deleted by owner");
-        Ok(err(StatusCode::OK, "Deleted"))
-    } else {
-        Err(err(StatusCode::NOT_FOUND, "Not found"))
-    }
+    let ip = client_ip(peer, &headers, st.cfg.trust_proxy);
+    probe_guarded(&st, ip, async {
+        if st.db.delete_with_hash(&id, &filename, &sha256_hex(&token)).map_err(internal)? {
+            let _ = tokio::fs::remove_file(st.file_path(&id)).await;
+            tracing::info!(%id, "deleted by owner");
+            Ok(err(StatusCode::OK, "Deleted"))
+        } else {
+            Err(err(StatusCode::NOT_FOUND, "Not found"))
+        }
+    })
+    .await
 }

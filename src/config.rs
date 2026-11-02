@@ -13,6 +13,8 @@ pub struct Config {
     pub trust_proxy: bool,
     pub auth_max_fails: u32,
     pub auth_lockout: Duration,
+    pub auth_global_max_fails: u32,
+    pub not_found_max: u32,
 }
 
 impl Config {
@@ -32,6 +34,8 @@ impl Config {
             trust_proxy: parse("FSEND_TRUST_PROXY", false)?,
             auth_max_fails: parse("FSEND_AUTH_MAX_FAILS", 5)?,
             auth_lockout: Duration::from_secs(60 * parse::<u64>("FSEND_AUTH_LOCKOUT_MINUTES", 15)?),
+            auth_global_max_fails: parse("FSEND_AUTH_GLOBAL_MAX_FAILS", 100)?,
+            not_found_max: parse("FSEND_NOT_FOUND_MAX", 30)?,
         };
         if !(1..=32).contains(&cfg.id_length) {
             return Err("FSEND_ID_LENGTH must be between 1 and 32".into());
