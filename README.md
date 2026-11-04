@@ -1,6 +1,6 @@
 # fsend
 
-Send a file, get a link. A small self-hosted file sharing service written in Rust,
+File transfer, simplified. A small self-hosted file sharing service written in Rust,
 a simpler take on [transfer.sh](https://github.com/dutchcoders/transfer.sh).
 
 - Upload from the **web** (drag & drop, paste, progress, QR code) or with plain **`curl`**
