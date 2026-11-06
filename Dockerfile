@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release --locked && cp target/release/fsend /fsend
 RUN mkdir -p /data
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /fsend /usr/local/bin/fsend
 COPY --from=build --chown=65532:65532 /data /data
 ENV FSEND_DATA_DIR=/data \
