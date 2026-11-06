@@ -122,6 +122,18 @@ impl Db {
         Ok(n > 0)
     }
 
+    /// True if this is the delete token of a stored file (used to explain a GET on the delete link).
+    pub fn is_delete_link(&self, id: &str, filename: &str, delete_hash: &str) -> rusqlite::Result<bool> {
+        self.conn()
+            .query_row(
+                "SELECT 1 FROM files WHERE id = ?1 AND filename = ?2 AND delete_hash = ?3",
+                params![id, filename, delete_hash],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|o| o.is_some())
+    }
+
     pub fn delete(&self, id: &str) -> rusqlite::Result<()> {
         self.conn().execute("DELETE FROM files WHERE id = ?1", params![id])?;
         Ok(())

@@ -79,9 +79,17 @@ curl --oauth2-bearer <token> -H "Max-Days: 1" -H "Max-Downloads: 1" \
 # pipe from stdin
 tar czf - ./project | curl --oauth2-bearer <token> --upload-file - https://your.host/project.tar.gz
 
-# delete early (the link is in the X-Url-Delete response header)
+# see the response headers too, including the delete link (X-Url-Delete)
+curl -D - --upload-file ./photo.jpg https://your.host/photo.jpg
+
+# delete early, using that link
 curl -X DELETE https://your.host/abc/photo.jpg/<delete-token>
 ```
+
+The delete link is only shown once, in the upload response: the `X-Url-Delete` header, or
+`delete_url` with `Accept: application/json`. The server keeps only a hash of it, so it can't be
+recovered. The web page remembers it in your browser. Opening it in a browser doesn't delete
+anything; it explains that `DELETE` is needed.
 
 | Request header | Meaning |
 |---|---|
@@ -110,6 +118,8 @@ A wrong token reports how many tries are left. After 5 wrong tokens the client g
 eval "$(curl -fsSL https://your.host/install.sh)"
 fsend --token <token> --days 1 --downloads 1 ./report.pdf
 ```
+
+It prints the download link, and the delete link on stderr.
 
 ## How files expire
 
@@ -157,7 +167,13 @@ docker compose up -d
 ### Behind a reverse proxy (HTTPS)
 
 fsend speaks plain HTTP. Put a reverse proxy in front for HTTPS, forward the `Host` header and
-`X-Forwarded-Proto`, and set `FSEND_TRUST_PROXY=true` so the token lockout sees real client IPs.
+`X-Forwarded-Proto`, and set `FSEND_TRUST_PROXY=true`.
+
+**Don't skip `FSEND_TRUST_PROXY=true`.** Without it every visitor seems to come from the proxy's IP,
+so they all share one rate limit: bots probing a few dozen missing URLs block downloads for
+everyone for 10 minutes. fsend logs a warning when it sees `X-Forwarded-For` while this is off.
+If there is another proxy or CDN in front of yours (for example Cloudflare), configure it to pass
+the real client IP too (nginx `real_ip` module).
 
 Caddy (handles HTTPS and the headers on its own):
 

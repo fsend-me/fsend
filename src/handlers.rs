@@ -508,6 +508,16 @@ pub async fn qr(
 
 async fn qr_inner(st: &AppState, id: String, filename: String, action: String, headers: &HeaderMap) -> Res {
     if action != "qr.svg" {
+        // Someone opened the delete link in a browser: explain instead of a bare 404.
+        if st.db.is_delete_link(&id, &filename, &sha256_hex(&action)).map_err(internal)? {
+            let url = format!("{}/{}/{}/{}", origin(headers), id, encode_segment(&filename), action);
+            let mut r = err(
+                StatusCode::METHOD_NOT_ALLOWED,
+                &format!("This is the delete link. Opening it does not delete the file.\nTo delete it, run:\n\n  curl -X DELETE {url}"),
+            );
+            r.headers_mut().insert(header::ALLOW, HeaderValue::from_static("DELETE"));
+            return Ok(r);
+        }
         return Err(err(StatusCode::NOT_FOUND, "Not found"));
     }
     let f = st.db.get_active(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(headers))?;

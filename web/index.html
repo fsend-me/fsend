@@ -129,8 +129,12 @@
           <span class="example-label">Shorter token form</span>
         </div>
         <div class="example">
+          <pre class="term"><span class="prompt">$ </span><code data-tpl>curl -D -{{curl_token}} --upload-file ./photo.jpg {{origin}}/photo.jpg</code></pre>
+          <span class="example-label">Show headers, including the X-Url-Delete link</span>
+        </div>
+        <div class="example">
           <pre class="term"><span class="prompt">$ </span><code data-tpl>curl -X DELETE {{origin}}/abc/photo.jpg/&lt;delete-token&gt;</code></pre>
-          <span class="example-label">Delete early</span>
+          <span class="example-label">Delete early, using the X-Url-Delete link</span>
         </div>
         <div class="example">
           <pre class="term"><span class="prompt">$ </span><code data-tpl>eval "$(curl -fsSL {{origin}}/install.sh)" &amp;&amp; fsend{{token}} ./photo.jpg</code></pre>

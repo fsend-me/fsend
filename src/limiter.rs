@@ -195,6 +195,20 @@ impl AuthGuard {
     }
 }
 
+/// Behind a proxy without FSEND_TRUST_PROXY every client shares the proxy's IP,
+/// so one client's lockout blocks everyone. Say so in the log, once.
+fn warn_proxy_once(peer: SocketAddr) {
+    static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        tracing::warn!(
+            proxy = %peer.ip(),
+            "requests arrive through a reverse proxy (X-Forwarded-For is set) but FSEND_TRUST_PROXY is off: \
+             all clients share the proxy's IP, so rate limits and lockouts hit everyone at once. \
+             Set FSEND_TRUST_PROXY=true."
+        );
+    }
+}
+
 /// Client IP: the socket peer, or with `trust_proxy` the last `X-Forwarded-For`
 /// hop (the one appended by our own proxy; earlier entries can be forged).
 pub fn client_ip(peer: SocketAddr, headers: &HeaderMap, trust_proxy: bool) -> IpAddr {
@@ -208,6 +222,8 @@ pub fn client_ip(peer: SocketAddr, headers: &HeaderMap, trust_proxy: bool) -> Ip
         if let Some(ip) = forwarded {
             return ip;
         }
+    } else if headers.contains_key("x-forwarded-for") || headers.contains_key("x-real-ip") {
+        warn_proxy_once(peer);
     }
     peer.ip()
 }

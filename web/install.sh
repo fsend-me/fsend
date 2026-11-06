@@ -14,6 +14,8 @@
 #   -n, --downloads <n>     delete after N downloads
 #   -u, --url <url>         server (default: $FSEND_URL or __FSEND_ORIGIN__)
 #   -h, --help
+#
+# Prints the download link, and the delete link (on stderr).
 
 fsend() {
   local token="${FSEND_TOKEN:-}" url="${FSEND_URL:-__FSEND_ORIGIN__}"
@@ -66,5 +68,13 @@ EOF
   # percent-encode the filename
   local enc
   enc="$(printf %s "$name" | od -An -tx1 | tr -d ' \n' | sed 's/../%&/g')"
-  curl "${args[@]}" "${url%/}/$enc"
+  # the download link goes to stdout; the delete link to stderr
+  local hdr del rc
+  hdr="$(mktemp)" || return 1
+  curl "${args[@]}" -D "$hdr" "${url%/}/$enc"
+  rc=$?
+  del="$(grep -i '^x-url-delete:' "$hdr" | cut -d' ' -f2- | tr -d '\r')"
+  rm -f "$hdr"
+  [ -n "$del" ] && echo "delete: $del" >&2
+  return $rc
 }
