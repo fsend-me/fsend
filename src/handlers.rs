@@ -50,6 +50,9 @@ const FILE_JS: &str = include_str!("../web/file.js");
 const THEME_JS: &str = include_str!("../web/theme.js");
 const STYLE_CSS: &str = include_str!("../web/style.css");
 const FAVICON: &str = include_str!("../web/favicon.svg");
+/// highlight.js (BSD-3-Clause, web/vendor/highlight.js-LICENSE.txt): common languages plus a few extras.
+const HIGHLIGHT_JS: &str = include_str!("../web/vendor/highlight-11.12.0.min.js");
+const HIGHLIGHT_JS_NAME: &str = "highlight-11.12.0.min.js";
 
 pub async fn index() -> Html<&'static str> {
     Html(INDEX_HTML)
@@ -82,6 +85,13 @@ pub async fn asset(Path(name): Path<String>) -> Response {
         "theme.js" => ("text/javascript; charset=utf-8", THEME_JS),
         "style.css" => ("text/css; charset=utf-8", STYLE_CSS),
         "favicon.svg" => ("image/svg+xml", FAVICON),
+        HIGHLIGHT_JS_NAME => {
+            return (
+                [(header::CONTENT_TYPE, "text/javascript; charset=utf-8"), (header::CACHE_CONTROL, "public, max-age=31536000, immutable")],
+                HIGHLIGHT_JS,
+            )
+                .into_response();
+        }
         _ => return err(StatusCode::NOT_FOUND, "Not found"),
     };
     ([(header::CONTENT_TYPE, ct), (header::CACHE_CONTROL, "public, max-age=300")], body).into_response()
@@ -385,7 +395,14 @@ async fn get_file_inner(st: &AppState, id: String, filename: String, q: GetQuery
     // Browsers get an info page; curl/wget get the raw file.
     if q.dl.is_none() && wants_html(&headers) {
         let f = st.db.get_active(&id, &filename).map_err(internal)?.ok_or_else(|| not_found(&headers))?;
-        return Ok(info_page(&origin(&headers), &f));
+        // Text preview reveals the content, so like image previews it's only
+        // offered when downloads aren't limited.
+        let text = if f.max_downloads.is_none() && !previewable(&f.content_type) {
+            text_preview(&st.file_path(&f.id)).await
+        } else {
+            None
+        };
+        return Ok(info_page(&origin(&headers), &f, text));
     }
 
     // HEAD never counts. Resumed downloads (a Range not starting at byte 0) don't
@@ -436,7 +453,88 @@ async fn serve(st: &AppState, f: &FileRow, disposition: &str, req: Request) -> R
     Ok(resp)
 }
 
-fn info_page(origin: &str, f: &FileRow) -> Response {
+/// How much of a text file the info page shows.
+const TEXT_PREVIEW_BYTES: usize = 64 * 1024;
+const TEXT_PREVIEW_LINES: usize = 1000;
+
+pub struct TextPreview {
+    text: String,
+    truncated: bool,
+}
+
+/// Reads the start of a file and returns it if it looks like text: valid UTF-8
+/// (a character cut at the end is fine) and no control characters besides
+/// tab, newline, carriage return and form feed.
+async fn text_preview(path: &std::path::Path) -> Option<TextPreview> {
+    use tokio::io::AsyncReadExt;
+    let file = tokio::fs::File::open(path).await.ok()?;
+    let len = file.metadata().await.ok()?.len();
+    let mut buf = Vec::with_capacity(TEXT_PREVIEW_BYTES.min(len as usize));
+    file.take(TEXT_PREVIEW_BYTES as u64).read_to_end(&mut buf).await.ok()?;
+    let mut truncated = (buf.len() as u64) < len;
+    text_from_bytes(&buf, truncated).map(|mut text| {
+        if let Some((cut, _)) = text.match_indices('\n').nth(TEXT_PREVIEW_LINES - 1) {
+            text.truncate(cut);
+            truncated = true;
+        }
+        TextPreview { text, truncated }
+    })
+}
+
+fn text_from_bytes(buf: &[u8], truncated: bool) -> Option<String> {
+    if buf.is_empty() {
+        return None;
+    }
+    let text = match std::str::from_utf8(buf) {
+        Ok(t) => t,
+        // A multi-byte character split by the size cap: keep what's before it.
+        Err(e) if truncated && e.error_len().is_none() => std::str::from_utf8(&buf[..e.valid_up_to()]).ok()?,
+        Err(_) => return None,
+    };
+    let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
+    if text.chars().any(|c| c.is_control() && !matches!(c, '\t' | '\n' | '\r' | '\u{0C}')) {
+        return None;
+    }
+    Some(text.replace("\r\n", "\n"))
+}
+
+/// Language hint for the syntax highlighter: the extension, or a well-known file name.
+fn lang_hint(filename: &str) -> String {
+    let lower = filename.to_ascii_lowercase();
+    let hint = match lower.as_str() {
+        "dockerfile" | "containerfile" => "dockerfile",
+        "makefile" | "gnumakefile" => "makefile",
+        "cmakelists.txt" => "cmake",
+        "nginx.conf" => "nginx",
+        "bashrc" | "bash_profile" | "zshrc" | "profile" => "bash",
+        _ if lower.starts_with("dockerfile.") => "dockerfile",
+        _ => lower.rsplit_once('.').map(|(_, e)| e).unwrap_or(""),
+    };
+    hint.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+' || *c == '-').take(16).collect()
+}
+
+fn text_preview_html(p: &TextPreview, filename: &str) -> String {
+    let body = p.text.strip_suffix('\n').unwrap_or(&p.text);
+    let count = body.split('\n').count();
+    let mut gutter = String::with_capacity(count * 5);
+    for n in 1..=count {
+        gutter.push_str(&n.to_string());
+        gutter.push('\n');
+    }
+    let note = if p.truncated {
+        r#"<div class="text-more">Preview shows the start of the file. Download it to see everything.</div>"#
+    } else {
+        ""
+    };
+    format!(
+        r#"<div class="preview-box preview-text" role="region" aria-label="Preview of {}" tabindex="0"><pre class="gutter" aria-hidden="true">{gutter}</pre><pre class="src"><code data-lang="{}">{}</code></pre></div>{note}"#,
+        html_escape(filename),
+        html_escape(&lang_hint(filename)),
+        html_escape(body)
+    )
+}
+
+fn info_page(origin: &str, f: &FileRow, text: Option<TextPreview>) -> Response {
     let url = file_url(origin, f);
     let extension = f
         .filename
@@ -449,6 +547,8 @@ fn info_page(origin: &str, f: &FileRow) -> Response {
             html_escape(&url),
             html_escape(&f.filename)
         )
+    } else if let Some(t) = &text {
+        text_preview_html(t, &f.filename)
     } else {
         format!(
             r#"<div class="preview-box"><div class="file-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg><span>{}</span></div></div>"#,
@@ -459,6 +559,7 @@ fn info_page(origin: &str, f: &FileRow) -> Response {
         Some(sub) if previewable(&f.content_type) => format!("{} image", sub.to_uppercase()),
         _ => match &extension {
             Some(e) => format!("{e} file"),
+            None if text.is_some() => "Text file".into(),
             None => "File".into(),
         },
     };
@@ -475,6 +576,7 @@ fn info_page(origin: &str, f: &FileRow) -> Response {
         "preview" => preview.clone(),
         "id" => html_escape(&f.id),
         "kind" => html_escape(&kind),
+        "scripts" if text.is_some() => format!(r#"<script src="/static/{HIGHLIGHT_JS_NAME}" defer></script>"#),
         _ => String::new(),
     });
     Html(html).into_response()
@@ -547,4 +649,42 @@ pub async fn delete(
         }
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_text() {
+        assert_eq!(text_from_bytes(b"#!/bin/sh\r\necho hi\n", false).as_deref(), Some("#!/bin/sh\necho hi\n"));
+        assert_eq!(text_from_bytes("xin chào\tbạn".as_bytes(), false).as_deref(), Some("xin chào\tbạn"));
+        assert!(text_from_bytes(b"PK\x03\x04\x00\x00", false).is_none(), "binary");
+        assert!(text_from_bytes(b"abc\x1b[31mred", false).is_none(), "escape codes");
+        assert!(text_from_bytes(b"\xff\xfe", false).is_none(), "not utf-8");
+        assert!(text_from_bytes(b"", false).is_none());
+        // a 2-byte character cut in half by the size cap
+        assert_eq!(text_from_bytes(&"ab\u{e0}".as_bytes()[..3], true).as_deref(), Some("ab"));
+        assert!(text_from_bytes(&"ab\u{e0}".as_bytes()[..3], false).is_none());
+    }
+
+    #[test]
+    fn text_preview_is_escaped() {
+        let p = TextPreview { text: "<script>alert(1)</script>\n{{url}}\n".into(), truncated: false };
+        let html = text_preview_html(&p, "x.html");
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("{{url}}"), "user text is inserted as-is, never re-rendered");
+        assert!(html.contains("<pre class=\"gutter\" aria-hidden=\"true\">1\n2\n</pre>"));
+    }
+
+    #[test]
+    fn lang_hints() {
+        assert_eq!(lang_hint("main.PY"), "py");
+        assert_eq!(lang_hint("Dockerfile"), "dockerfile");
+        assert_eq!(lang_hint("CMakeLists.txt"), "cmake");
+        assert_eq!(lang_hint("notes"), "");
+        assert_eq!(lang_hint("x.c++"), "c++");
+        assert_eq!(lang_hint("a.\"><b>"), "b");
+    }
 }

@@ -37,7 +37,7 @@ pub fn router(st: AppState) -> Router {
         .route("/healthz", get(handlers::healthz))
         .route("/install.sh", get(handlers::install_sh))
         .route("/api/config", get(handlers::config))
-        .route("/static/{name}", get(handlers::asset))
+        .route("/static/{name}", get(handlers::asset).layer(tower_http::compression::CompressionLayer::new()))
         .route("/static/fonts/{name}", get(handlers::font))
         .route("/{filename}", put(handlers::upload).layer(DefaultBodyLimit::disable()))
         .route("/{id}/{filename}", get(handlers::get_file))

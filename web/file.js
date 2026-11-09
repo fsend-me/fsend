@@ -1,5 +1,26 @@
 "use strict";
 
+// Syntax highlighting for text previews (highlight.js is only loaded on those pages).
+(() => {
+  const code = document.querySelector(".preview-text code");
+  if (!code || !window.hljs) return;
+  const lang = code.dataset.lang || "";
+  const plain = new Set(["txt", "text", "log", "csv", "tsv", "out"]);
+  if (plain.has(lang)) return;
+  try {
+    if (hljs.getLanguage(lang)) {
+      code.innerHTML = hljs.highlight(code.textContent, { language: lang, ignoreIllegals: true }).value;
+    } else if (code.textContent.length <= 20000) {
+      // No known extension: guess, but only keep a confident result.
+      const r = hljs.highlightAuto(code.textContent);
+      if (r.relevance >= 8) code.innerHTML = r.value;
+    } else {
+      return;
+    }
+    code.classList.add("hljs");
+  } catch { /* leave the plain text */ }
+})();
+
 const cd = document.getElementById("countdown");
 const expires = Number(cd.dataset.expires);
 

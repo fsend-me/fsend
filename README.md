@@ -6,7 +6,7 @@ a simpler take on [transfer.sh](https://github.com/dutchcoders/transfer.sh).
 - Upload from the **web** (drag & drop, paste, progress, QR code) or with plain **`curl`**
 - Files **delete themselves** after a set time and/or number of downloads
 - Optional **upload token**, with per-IP lockout against guessing
-- **Image previews**, light and dark themes, works on phones
+- **Previews** for images and text/code files (with syntax highlighting), light and dark themes, works on phones
 - Works on **any domain**: links are built from the request, nothing to configure
 - One static binary, SQLite, local disk. The Docker image is about 13 MB (amd64 and arm64)
 
@@ -230,7 +230,7 @@ UID:GID `65532:65532`, so a bind-mounted folder needs `sudo chown -R 65532:65532
 | Method | Path | |
 |---|---|---|
 | `PUT` | `/{filename}` | Upload. Headers: `Authorization`, `Max-Days`, `Max-Downloads`. |
-| `GET` | `/{id}/{filename}` | Browsers get an info page with a preview; other clients get the file. |
+| `GET` | `/{id}/{filename}` | Browsers get an info page with a preview (images, text and code); other clients get the file. |
 | `GET` | `/{id}/{filename}?dl=1` | Always download the file. |
 | `GET` | `/{id}/{filename}?inline=1` | Inline image preview (images without a download limit). |
 | `GET` | `/{id}/{filename}/qr.svg` | QR code of the link. |
@@ -247,7 +247,9 @@ UID:GID `65532:65532`, so a bind-mounted folder needs `sudo chown -R 65532:65532
 - Filenames are sanitized (path parts, control characters, and bidi/zero-width characters that could
   disguise an extension are removed); files are stored on disk by id only.
 - Files are always served as `attachment` with `nosniff`. Only raster images (png, jpeg, gif, webp,
-  avif, bmp; detected from the content, never SVG) are previewed inline.
+  avif, bmp; detected from the content, never SVG) are previewed inline. Text files (UTF-8, no control characters) are previewed as escaped text on
+  the info page, first 64 KB / 1000 lines only, with syntax highlighting from a self-hosted
+  highlight.js. No previews for files with a download limit.
 - Wrong upload tokens are limited per client (IPv6 counted per /64) and server-wide, so even short
   tokens resist guessing from many addresses. For a public server, prefer tokens of 8+ characters.
 - Delete tokens are stored hashed. Pages use a strict Content-Security-Policy and load nothing
@@ -271,4 +273,5 @@ GitHub Actions runs the tests and publishes the multi-arch image on every push t
 ## License
 
 [MIT](LICENSE). The bundled Geist and Geist Mono fonts (`web/fonts/`) are under the
-[SIL Open Font License 1.1](web/fonts/OFL.txt).
+[SIL Open Font License 1.1](web/fonts/OFL.txt). The bundled [highlight.js](https://highlightjs.org) (`web/vendor/`)
+is under the [BSD 3-Clause License](web/vendor/highlight.js-LICENSE.txt).

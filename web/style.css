@@ -37,6 +37,8 @@
   --code-ink: #EDEAE3;
   --code-muted: #A39F97;
   --code-line: #3A3A3E;
+  --syn-keyword: #B03A12; --syn-string: #2D7337; --syn-number: #8A44B8; --syn-comment: #85807A;
+  --syn-title: #1F5DA6; --syn-type: #8A5A00; --syn-attr: #0B7280; --syn-meta: #6A655D;
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -46,6 +48,8 @@
     --bg: #101012; --card: #19191C; --ink: #F2F0EB; --muted: #A39F97; --line: #2C2C30;
     --accent: #FF6A2E; --accent-soft: #3B2015; --danger: #FF8A7A; --ok: #2E8B57; --sel: #2C2C30;
     --code: #0A0A0C; --code-ink: #E6E3DC; --code-line: #2C2C30;
+    --syn-keyword: #FF8A5B; --syn-string: #A3D98F; --syn-number: #CBA6F7; --syn-comment: #7D786F;
+    --syn-title: #82B8FF; --syn-type: #E9C46A; --syn-attr: #72D2D6; --syn-meta: #A39F97;
     color-scheme: dark;
   }
 }
@@ -53,6 +57,8 @@
   --bg: #101012; --card: #19191C; --ink: #F2F0EB; --muted: #A39F97; --line: #2C2C30;
   --accent: #FF6A2E; --accent-soft: #3B2015; --danger: #FF8A7A; --ok: #2E8B57; --sel: #2C2C30;
   --code: #0A0A0C; --code-ink: #E6E3DC; --code-line: #2C2C30;
+  --syn-keyword: #FF8A5B; --syn-string: #A3D98F; --syn-number: #CBA6F7; --syn-comment: #7D786F;
+  --syn-title: #82B8FF; --syn-type: #E9C46A; --syn-attr: #72D2D6; --syn-meta: #A39F97;
   color-scheme: dark;
 }
 
@@ -262,6 +268,27 @@ input:disabled { cursor: not-allowed; opacity: .6; }
 .file-main { flex: 999 1 460px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 22px; }
 .preview-box { border-radius: 16px; background: var(--accent-soft); overflow: hidden; display: grid; place-items: center; }
 .preview-box img { display: block; max-width: 100%; max-height: 520px; }
+.preview-text { display: flex; align-items: flex-start; place-items: normal; background: var(--bg); border: 1px solid var(--line); max-height: 520px; overflow: auto; }
+.preview-text pre { margin: 0; padding: 14px 0; font: 13px/1.6 var(--mono); tab-size: 4; }
+.preview-text .gutter {
+  position: sticky; left: 0; flex: none; padding: 14px 10px 14px 14px; min-width: 4ch; text-align: right;
+  color: var(--muted); opacity: .75; background: var(--bg); border-right: 1px solid var(--line); user-select: none;
+}
+.preview-text .src { flex: 1 0 auto; padding-left: 14px; padding-right: 18px; }
+.preview-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* syntax colors (highlight.js classes) */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-section, .hljs-name { color: var(--syn-keyword); }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-string, .hljs-symbol, .hljs-char { color: var(--syn-string); }
+.hljs-number, .hljs-bullet, .hljs-link, .hljs-variable.constant_ { color: var(--syn-number); }
+.hljs-comment, .hljs-quote { color: var(--syn-comment); font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-function .hljs-title { color: var(--syn-title); }
+.hljs-type, .hljs-built_in, .hljs-title.class_, .hljs-class .hljs-title { color: var(--syn-type); }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-selector-attr, .hljs-selector-class, .hljs-selector-id, .hljs-template-variable, .hljs-variable { color: var(--syn-attr); }
+.hljs-meta, .hljs-meta .hljs-keyword, .hljs-subst, .hljs-params { color: var(--syn-meta); }
+.hljs-deletion { color: var(--danger); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong, .hljs-section { font-weight: 600; }
+.text-more { margin-top: -12px; font-size: 13px; color: var(--muted); }
 .file-icon { height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .file-icon svg { width: 44px; height: 44px; stroke-width: 1.5; }
 .file-icon span { font: 600 13px var(--mono); letter-spacing: .08em; }
@@ -320,6 +347,7 @@ input:disabled { cursor: not-allowed; opacity: .6; }
   .file-main { padding: 18px; }
   .file-stub { border-left: 0; border-top: 2px dashed var(--line); }
   .share { flex-direction: column; }
+  .share .url { flex: none; }
   .gone-card { padding: 36px 22px 28px; margin-top: 40px; }
 }
 .ref-main { flex: 3 1 480px; }
