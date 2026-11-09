@@ -323,6 +323,7 @@ function showResult(li, entry) {
   setStub(li, "Expires in", shortLeft(entry.expires_at));
   $(".url", li).addEventListener("focus", (e) => e.target.select());
   $(".copy", li).addEventListener("click", (e) => copy(entry.url, e.currentTarget));
+  $(".open", li).href = entry.url;
   $(".qr-btn", li).addEventListener("click", () => {
     const q = $(".qr", li);
     if (!q.firstChild) {
