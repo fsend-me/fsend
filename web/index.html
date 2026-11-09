@@ -17,15 +17,15 @@
         <span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
         <span class="logo-text">fsend</span>
       </a>
-      <nav class="tabs" role="tablist">
-        <button class="tab active" data-tab="web" role="tab" type="button">Upload</button>
-        <button class="tab" data-tab="cli" role="tab" type="button">Command line</button>
+      <nav class="tabs" role="tablist" aria-label="Ways to upload">
+        <button class="tab active" id="tabbtn-web" data-tab="web" role="tab" type="button" aria-selected="true" aria-controls="tab-web">Upload</button>
+        <button class="tab" id="tabbtn-cli" data-tab="cli" role="tab" type="button" aria-selected="false" aria-controls="tab-cli" tabindex="-1">Command line</button>
       </nav>
       <div class="theme-switch" data-theme-switch></div>
     </header>
 
     <!-- ===================== Upload ===================== -->
-    <section id="tab-web">
+    <section id="tab-web" role="tabpanel" aria-labelledby="tabbtn-web">
       <div class="hero">
         <h1>File transfer,<br>simplified.</h1>
         <div class="hero-meta">
@@ -68,9 +68,10 @@
             <span class="eyebrow">Upload token</span>
             <span class="control with-icon">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
-              <input id="token" type="password" autocomplete="current-password" placeholder="Required to upload">
+              <input id="token" type="password" autocomplete="current-password" placeholder="Paste your upload token" aria-describedby="token-hint token-note">
             </span>
             <small id="token-hint" class="field-hint" hidden></small>
+            <small id="token-note" class="field-note">This server is private. Ask its owner for a token.</small>
           </label>
         </div>
       </div>
@@ -95,7 +96,7 @@
     </section>
 
     <!-- ===================== Command line ===================== -->
-    <section id="tab-cli" hidden>
+    <section id="tab-cli" role="tabpanel" aria-labelledby="tabbtn-cli" hidden>
       <h1 class="page-title">Upload from<br>your terminal.</h1>
       <p class="lead">Plain <code>curl</code>, nothing to install.</p>
 
@@ -169,6 +170,8 @@
     </footer>
   </main>
 
+  <div id="live" class="sr-only" aria-live="polite"></div>
+
   <template id="item-tpl">
     <li class="ticket">
       <div class="ticket-main">
@@ -178,7 +181,7 @@
             <span class="ticket-name"></span>
             <span class="ticket-meta"></span>
           </div>
-          <div class="progress"><div class="bar"></div></div>
+          <div class="progress" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar"></div></div>
           <div class="result" hidden>
             <input class="url" readonly aria-label="Share link">
             <button class="btn btn-ink copy" type="button">Copy link</button>
@@ -196,6 +199,10 @@
           <div class="error" hidden>
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>
             <span class="error-text"></span>
+            <span class="error-actions">
+              <button class="link-btn retry" type="button" hidden>Retry</button>
+              <button class="link-btn dismiss" type="button" hidden>Remove</button>
+            </span>
           </div>
         </div>
       </div>

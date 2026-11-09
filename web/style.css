@@ -148,6 +148,8 @@ select.control { cursor: pointer; }
 .control.with-icon input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
 .control.with-icon svg { width: 16px; height: 16px; }
 .field-hint { font-size: 13px; font-weight: 500; color: var(--danger); }
+.field-note { font-size: 13px; color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .field.invalid .control { border: 2px solid var(--danger); padding: 0 13px; color: var(--danger); }
 .shake { animation: shake .4s; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
@@ -212,7 +214,13 @@ input:disabled { cursor: not-allowed; opacity: .6; }
 }
 .qr { display: flex; align-items: center; gap: 16px; }
 .qr img { width: 148px; height: 148px; padding: 8px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
-.error { display: flex; align-items: center; gap: 8px; color: var(--danger); font-size: 14px; font-weight: 500; }
+.error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--danger); font-size: 14px; font-weight: 500; }
+.error.pending { color: var(--muted); }
+.error-text { flex: 1 1 200px; }
+.error-actions { display: flex; gap: 16px; }
+.error-actions .link-btn { padding: 4px 0; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.error-actions .dismiss { color: var(--muted); font-weight: 500; }
+.ticket.waiting .stub-value { font-size: 18px; color: var(--muted); }
 .ticket-stub {
   flex: none; width: 150px; border-left: 2px dashed var(--line); padding: 12px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
@@ -289,6 +297,18 @@ input:disabled { cursor: not-allowed; opacity: .6; }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong, .hljs-section { font-weight: 600; }
 .text-more { margin-top: -12px; font-size: 13px; color: var(--muted); }
+.limit-note {
+  display: flex; gap: 16px; align-items: center; padding: 16px 18px; border-radius: 16px;
+  background: var(--accent-soft); border: 1px solid var(--line);
+}
+.limit-icon {
+  flex: none; width: 64px; height: 64px; border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--accent);
+}
+.limit-icon svg { width: 22px; height: 22px; }
+.limit-icon b { font: 600 10px var(--mono); letter-spacing: .06em; color: var(--ink); }
+.limit-text { font-size: 14px; line-height: 1.5; }
+.limit-text strong { display: block; font-size: 16px; }
 .file-icon { height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .file-icon svg { width: 44px; height: 44px; stroke-width: 1.5; }
 .file-icon span { font: 600 13px var(--mono); letter-spacing: .08em; }
@@ -342,7 +362,12 @@ input:disabled { cursor: not-allowed; opacity: .6; }
   .options { padding: 18px 16px; gap: 14px; }
   .ticket-main { padding: 14px; gap: 14px; align-items: flex-start; }
   .thumb { width: 52px; height: 52px; }
-  .ticket-stub { display: none; }
+  .ticket { flex-direction: column; }
+  .ticket-stub {
+    width: auto; flex-direction: row; justify-content: space-between; gap: 12px; padding: 10px 14px;
+    border-left: 0; border-top: 2px dashed var(--line);
+  }
+  .stub-value, .ticket.failed .stub-value, .ticket.waiting .stub-value { font-size: 15px; }
   .file-ticket { margin-top: 28px; }
   .file-main { padding: 18px; }
   .file-stub { border-left: 0; border-top: 2px dashed var(--line); }
@@ -354,3 +379,13 @@ input:disabled { cursor: not-allowed; opacity: .6; }
 .ref-side { flex: 2 1 300px; }
 .foot-link { color: var(--muted); text-decoration: none; }
 .foot-link:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
+/* the "ask the owner" note is for people without a token */
+.field:has(input:not(:placeholder-shown)) .field-note { display: none; }

@@ -549,6 +549,19 @@ fn info_page(origin: &str, f: &FileRow, text: Option<TextPreview>) -> Response {
         )
     } else if let Some(t) = &text {
         text_preview_html(t, &f.filename)
+    } else if let Some(left) = f.downloads_left() {
+        // Limited downloads: no preview, and tell the recipient what that means.
+        let (count, after) = if left == 1 {
+            ("This file can be downloaded once.".to_string(), "Then the link stops working and the file is deleted.")
+        } else {
+            (format!("This file can be downloaded {left} more times."), "After that the link stops working and the file is deleted.")
+        };
+        format!(
+            r#"<div class="limit-note" role="note"><span class="limit-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 01-10 0c0-2.2 1-3.6 2.2-4.6.2 1.6 1 2.6 2.1 2.9C11.2 8.6 11 6 12 3z"/></svg><b>{}</b></span><span class="limit-text"><strong>{}</strong> {} There's no preview, so opening this page doesn't use a download.</span></div>"#,
+            html_escape(extension.as_deref().unwrap_or("FILE")),
+            count,
+            after
+        )
     } else {
         format!(
             r#"<div class="preview-box"><div class="file-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg><span>{}</span></div></div>"#,
