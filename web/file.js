@@ -30,16 +30,28 @@ on.textContent = new Date(expires * 1000).toLocaleString(undefined, {
 });
 
 const pad = (n) => String(n).padStart(2, "0");
+let timer = null;
 function tick() {
   let s = Math.max(0, Math.floor(expires - Date.now() / 1000));
-  if (s <= 0) { cd.textContent = "expired"; return; }
+  if (s <= 0) { expired(); return; }
   const d = Math.floor(s / 86400); s %= 86400;
   const h = Math.floor(s / 3600); s %= 3600;
   const m = Math.floor(s / 60); s %= 60;
-  cd.textContent = d ? `${d}d ${pad(h)}:${pad(m)}` : `${pad(h)}:${pad(m)}:${pad(s)}`;
+  cd.textContent = d ? `${d}d ${h}h ${pad(m)}m` : h ? `${h}h ${pad(m)}m ${pad(s)}s` : `${m}m ${pad(s)}s`;
+}
+
+// The file is gone once the time runs out: say so instead of offering a dead download.
+function expired() {
+  clearInterval(timer);
+  cd.textContent = "Expired";
+  const dl = document.getElementById("download");
+  dl.removeAttribute("href");
+  dl.setAttribute("aria-disabled", "true");
+  dl.classList.add("disabled");
+  dl.lastChild.textContent = " Expired";
 }
 tick();
-setInterval(tick, 1000);
+timer = setInterval(tick, 1000);
 
 const url = document.getElementById("url");
 url.addEventListener("focus", () => url.select());
@@ -50,3 +62,11 @@ document.getElementById("copy").addEventListener("click", async (e) => {
   b.classList.add("ok");
   setTimeout(() => { b.textContent = "Copy link"; b.classList.remove("ok"); }, 1400);
 });
+
+const share = document.getElementById("share");
+if (navigator.share) {
+  share.hidden = false;
+  share.addEventListener("click", () => {
+    navigator.share({ title: document.title.replace(/ · fsend$/, ""), url: url.value }).catch(() => {});
+  });
+}

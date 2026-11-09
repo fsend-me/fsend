@@ -92,7 +92,13 @@ function renderSnippets() {
   };
   $$("[data-tpl]").forEach((el) => {
     if (!el.dataset.src) el.dataset.src = el.textContent;
-    el.textContent = el.dataset.src.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
+    const text = el.dataset.src.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
+    el.textContent = "";
+    // Allow line breaks after "/" inside URL paths (not in "./" or "://").
+    text.split(/(?<=[^.:/]\/)/).forEach((part, i) => {
+      if (i) el.append(document.createElement("wbr"));
+      el.append(part);
+    });
     const pre = el.closest(".term");
     if (!pre || pre.hasAttribute("data-nocopy")) return;
     const host = pre.closest(".example") || pre;
@@ -129,7 +135,18 @@ async function loadConfig() {
     if (d === cfg.default_days) o.selected = true;
     sel.add(o);
   }
+  heroExpiry();
 }
+
+// The hero line follows the chosen limits.
+function heroExpiry() {
+  const md = Number($("#max-downloads").value);
+  $("#hero-expiry").textContent = fmtDays(Number($("#days").value) || cfg.default_days)
+    + (md ? ` or ${md} download${md > 1 ? "s" : ""}` : "");
+}
+$("#days").addEventListener("change", heroExpiry);
+$("#max-downloads").addEventListener("change", heroExpiry);
+$("#options").addEventListener("submit", (e) => { e.preventDefault(); tokenEntered(); });
 
 // ---------- token feedback & brute-force lockout ----------
 const drop = $("#drop");
@@ -450,9 +467,9 @@ function showResult(li, entry) {
   $(".progress", li).hidden = true;
   $(".result", li).hidden = false;
   $(".url", li).value = entry.url;
-  const limit = entry.max_downloads
-    ? `${entry.max_downloads} download${entry.max_downloads > 1 ? "s" : ""}`
-    : "unlimited downloads";
+  const limit = entry.max_downloads === 1
+    ? "burns after 1 download"
+    : entry.max_downloads ? `max ${entry.max_downloads} downloads` : "unlimited downloads";
   $(".ticket-meta", li).textContent = `${humanSize(entry.size)} · ${limit}`;
   setStub(li, "Expires in", shortLeft(entry.expires_at));
   $(".url", li).addEventListener("focus", (e) => e.target.select());

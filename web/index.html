@@ -30,7 +30,7 @@
         <h1>File transfer,<br>simplified.</h1>
         <div class="hero-meta">
           <span>Up to <span id="max-size">10 GB</span> per file</span>
-          <span>Self-destructs after <span class="js-default-days-text">3 days</span></span>
+          <span>Self-destructs after <span id="hero-expiry">3 days</span></span>
         </div>
       </div>
 
@@ -48,7 +48,8 @@
 
         <div class="perforation" aria-hidden="true"></div>
 
-        <div class="options">
+        <form class="options" id="options" autocomplete="on">
+          <input type="text" name="username" autocomplete="username" value="fsend" hidden aria-hidden="true" tabindex="-1">
           <label class="field">
             <span class="eyebrow">Expires after</span>
             <select id="days" class="control"></select>
@@ -73,7 +74,7 @@
             <small id="token-hint" class="field-hint" hidden></small>
             <small id="token-note" class="field-note">This server is private. Ask its owner for a token.</small>
           </label>
-        </div>
+        </form>
       </div>
 
       <div id="lock-banner" class="notice" role="alert" hidden>
@@ -112,7 +113,7 @@
           <span class="step-note">Expires after 1 day and burns after the first download.</span>
         </div>
         <div class="step" data-auth>
-          <div class="step-head"><span class="step-n">3</span>Forgot the token?</div>
+          <div class="step-head"><span class="step-n">3</span>Without a token</div>
           <pre class="term" data-nocopy><span class="prompt">$ </span><code data-tpl>curl --upload-file ./photo.jpg {{origin}}/photo.jpg</code>
 <span class="out">Error: this server requires an upload token.</span></pre>
           <span class="step-note">The server answers 401 and shows the right command. 5 wrong tokens lock your IP for a while.</span>

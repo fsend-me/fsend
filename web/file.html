@@ -32,13 +32,14 @@
             <span class="chip">{{downloads}}</span>
           </div>
         </div>
-        <a class="btn btn-accent btn-big" href="{{url}}?dl=1">
+        <a class="btn btn-accent btn-big" id="download" href="{{url}}?dl=1">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
           Download
         </a>
         <div class="share">
           <input class="url" id="url" value="{{url}}" readonly aria-label="Share link">
           <button class="btn btn-line" id="copy" type="button">Copy link</button>
+          <button class="btn btn-line" id="share" type="button" hidden>Share…</button>
         </div>
       </div>
 
@@ -50,7 +51,7 @@
         </div>
         <div class="qr">
           <img src="{{url}}/qr.svg" alt="QR code for this link" width="148" height="148">
-          <span>Scan to open on your phone</span>
+          <span>Scan to open on another device</span>
         </div>
         <div class="stub-block">
           <span class="stub-label">File ID</span>
