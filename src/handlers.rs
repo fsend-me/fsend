@@ -538,8 +538,10 @@ fn text_preview_html(p: &TextPreview, filename: &str) -> String {
     } else {
         ""
     };
+    // A truncated preview can only copy what is shown, so say so on the button.
+    let copy_label = if p.truncated { "Copy preview" } else { "Copy" };
     format!(
-        r#"<div class="preview-box preview-text" role="region" aria-label="Preview of {}" tabindex="0"><pre class="gutter" aria-hidden="true">{gutter}</pre><pre class="src"><code data-lang="{}">{}</code></pre></div>{note}"#,
+        r#"<div class="preview-wrap"><div class="preview-box preview-text" role="region" aria-label="Preview of {}" tabindex="0"><pre class="gutter" aria-hidden="true">{gutter}</pre><pre class="src"><code data-lang="{}">{}</code></pre></div><button class="btn btn-line copy-text" id="copy-text" type="button" hidden>{copy_label}</button></div>{note}"#,
         html_escape(filename),
         html_escape(&lang_hint(filename)),
         html_escape(body)

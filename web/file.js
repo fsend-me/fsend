@@ -21,6 +21,32 @@
   } catch { /* leave the plain text */ }
 })();
 
+// Copy the previewed text (only what is shown when the preview is truncated).
+const copyText = document.getElementById("copy-text");
+if (copyText) {
+  const label = copyText.textContent;
+  copyText.hidden = false;
+  copyText.addEventListener("click", async () => {
+    const code = document.querySelector(".preview-text code");
+    let ok = true;
+    try {
+      await navigator.clipboard.writeText(code.textContent);
+    } catch {
+      // No clipboard API (plain http): select the code and use the legacy command.
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ok = document.execCommand("copy");
+      if (ok) sel.removeAllRanges(); // otherwise leave it selected for a manual copy
+    }
+    copyText.textContent = ok ? "Copied!" : "Press Ctrl+C";
+    copyText.classList.toggle("ok", ok);
+    setTimeout(() => { copyText.textContent = label; copyText.classList.remove("ok"); }, 1400);
+  });
+}
+
 const cd = document.getElementById("countdown");
 const expires = Number(cd.dataset.expires);
 

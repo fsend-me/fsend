@@ -283,6 +283,10 @@ input:disabled { cursor: not-allowed; opacity: .6; }
   color: var(--muted); opacity: .75; background: var(--bg); border-right: 1px solid var(--line); user-select: none;
 }
 .preview-text .src { flex: 1 0 auto; padding-left: 14px; padding-right: 18px; }
+.preview-wrap { position: relative; }
+/* Sits outside the scrolling box so it stays put; leaves room for a vertical scrollbar. */
+.copy-text { position: absolute; top: 8px; right: 22px; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 13px; background: var(--card); }
+.copy-text:not(.ok):hover { background: var(--card); }
 .preview-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* syntax colors (highlight.js classes) */
 .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-section, .hljs-name { color: var(--syn-keyword); }
