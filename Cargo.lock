@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "fsend"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "axum",
  "futures-util",
