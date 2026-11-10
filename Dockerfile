@@ -5,6 +5,8 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY web ./web
+# Shown in page footers and `fsend --version`; CI passes the image tag.
+ARG FSEND_VERSION=
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release --locked && cp target/release/fsend /fsend

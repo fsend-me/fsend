@@ -54,8 +54,20 @@ const FAVICON: &str = include_str!("../web/favicon.svg");
 const HIGHLIGHT_JS: &str = include_str!("../web/vendor/highlight-11.12.0.min.js");
 const HIGHLIGHT_JS_NAME: &str = "highlight-11.12.0.min.js";
 
+/// Version shown in page footers: the image tag CI passes in (`v0.1.4`, `sha-abc1234`),
+/// or `v<crate version>-dev` for local builds.
+pub fn version() -> &'static str {
+    static V: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| match option_env!("FSEND_VERSION") {
+        Some(v) if !v.trim().is_empty() => v.trim().to_string(),
+        _ => format!("v{}-dev", env!("CARGO_PKG_VERSION")),
+    });
+    &V
+}
+
 pub async fn index() -> Html<&'static str> {
-    Html(INDEX_HTML)
+    static PAGE: std::sync::LazyLock<String> =
+        std::sync::LazyLock::new(|| INDEX_HTML.replace("{{version}}", &html_escape(version())));
+    Html(&PAGE)
 }
 
 const FONTS: &[(&str, &[u8])] = &[
@@ -589,6 +601,7 @@ fn info_page(origin: &str, f: &FileRow, text: Option<TextPreview>) -> Response {
         "preview" => preview.clone(),
         "id" => html_escape(&f.id),
         "kind" => html_escape(&kind),
+        "version" => html_escape(version()),
         "scripts" if text.is_some() => format!(r#"<script src="/static/{HIGHLIGHT_JS_NAME}" defer></script>"#),
         _ => String::new(),
     });

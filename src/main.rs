@@ -123,6 +123,10 @@ async fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
+    if std::env::args().any(|a| a == "--version" || a == "-V") {
+        println!("fsend {}", handlers::version());
+        return std::process::ExitCode::SUCCESS;
+    }
     if std::env::args().any(|a| a == "--healthcheck") {
         return healthcheck(&cfg.listen);
     }
