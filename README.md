@@ -206,12 +206,15 @@ Images are published to GHCR for `linux/amd64` and `linux/arm64`:
 
 | Tag | Follows |
 |---|---|
-| `latest`, `main` | Every push to `main` |
-| `0.1` | Latest `0.1.x` release |
-| `0.1.2` | Exactly that release |
+| `latest` | Newest release |
+| `0.1` | Newest `0.1.x` release |
+| `0.1.5` | Exactly that release |
+| `main` | Every push to `main` (unreleased) |
 | `sha-<short>` | A single commit |
 
-To stay on a release line, change `image:` in `docker-compose.yml` to `ghcr.io/fsend-me/fsend:0.1`.
+The page footer and `fsend --version` show which one is running: `v0.1.5` for a release,
+`sha-<short>` for a `main` build. To stay on a release line, change `image:` in
+`docker-compose.yml` to `ghcr.io/fsend-me/fsend:0.1`.
 
 ### Without Compose
 

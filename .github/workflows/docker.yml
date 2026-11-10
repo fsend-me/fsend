@@ -129,8 +129,9 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
+          # `latest` comes only from release tags (flavor latest=auto on semver), so a
+          # main build finishing after a release can't overwrite it.
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
